@@ -102,12 +102,10 @@ function createMarker(data) {
   const category = data["Κατηγορία Προβλήματος"] || "Άγνωστη";
   const date = data["Ημερομηνία"] || "";
   const coord = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  const description = data["Περιγραφή"] || "";
 
-  const popupContent = `
-    <b>🛠️ ${category}</b><br/>
-    🗓️ ${date}<br/>
-    📍 ${coord}
-  `;
+  let shortContent = `<b>🛠️ ${category}</b><br/>🗓️ ${date}<br/>📍 ${coord}`;
+  let fullContent = shortContent + (description ? `<br/><hr><b>📄 Περιγραφή:</b><br/>${description}` : "");
 
   const marker = L.circleMarker([lat, lng], {
     radius: 8,
@@ -116,7 +114,18 @@ function createMarker(data) {
     weight: 1,
     opacity: 1,
     fillOpacity: 0.9
-  }).bindPopup(popupContent);
+  });
+
+  let isExpanded = false;
+  marker.on('click', function () {
+    if (!isExpanded) {
+      marker.bindPopup(fullContent).openPopup();
+      isExpanded = true;
+    } else {
+      marker.bindPopup(shortContent).openPopup();
+      isExpanded = false;
+    }
+  });
 
   marker.status = status;
   return marker;
