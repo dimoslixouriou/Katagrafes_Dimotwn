@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -55,12 +54,12 @@
       border-radius: 4px;
     }
     .expand-icon {
-      display: inline-block;
-      float: right;
+      display: block;
+      text-align: right;
       font-size: 1.2em;
       cursor: pointer;
       color: #0078D7;
-      margin-top: 4px;
+      margin-top: 8px;
     }
   </style>
 </head>
@@ -111,10 +110,18 @@ function createMarker(data) {
   const category = data["Κατηγορία Προβλήματος"] || "Άγνωστη";
   const date = data["Ημερομηνία"] || "";
   const coord = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-  const description = data["Περιγραφή"] || "";
+  const description = data["Περιγραφή"] || "(δεν έχει καταχωρηθεί)";
 
-  let shortContent = `<b>🛠️ ${category}</b><br/>🗓️ ${date}<br/>📍 ${coord}<br/><span class='expand-icon'>&#x1F50D;</span>`;
-  let fullContent = shortContent + (description ? `<br/><hr><b>📄 Περιγραφή:</b><br/>${description}` : "");
+  const popupShort = document.createElement('div');
+  popupShort.innerHTML = `
+    <b>🛠️ ${category}</b><br/>
+    🗓️ ${date}<br/>
+    📍 ${coord}<br/>
+    <div class="expand-icon">&#x1F50D;</div>`;
+
+  popupShort.querySelector('.expand-icon').addEventListener('click', () => {
+    marker.bindPopup(`<b>📄 Περιγραφή:</b><br/>${description}`).openPopup();
+  });
 
   const marker = L.circleMarker([lat, lng], {
     radius: 8,
@@ -123,18 +130,7 @@ function createMarker(data) {
     weight: 1,
     opacity: 1,
     fillOpacity: 0.9
-  });
-
-  let isExpanded = false;
-  marker.on('click', function () {
-    if (!isExpanded) {
-      marker.bindPopup(fullContent).openPopup();
-      isExpanded = true;
-    } else {
-      marker.bindPopup(shortContent).openPopup();
-      isExpanded = false;
-    }
-  });
+  }).bindPopup(popupShort);
 
   marker.status = status;
   return marker;
