@@ -87,7 +87,123 @@
 
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 <script>
-// Ο κώδικας JavaScript για popup toggle θα προστεθεί στο επόμενο βήμα
+const map = L.map('map').setView([38.1811, 20.4890], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const colors = {
+  "Ενεργή": "red",
+  "Σε εξέλιξη": "orange",
+  "Ολοκληρωμένη": "green",
+  "Άκυρη": "gray",
+  "": "white"
+};
+
+let allMarkers = [];
+
+function createPopupContent(data, isFull) {
+  const base = `<b>🛠️ ${data.category}</b><br/>🗓️ ${data.date}<br/>📍 ${data.coord}`;
+  const desc = `<hr><b>📄 Περιγραφή:</b><br/>${data.description}`;
+  const controls = `<div class="popup-controls">
+    <span class="popup-icon toggle-popup">${isFull ? '&#x2796;' : '&#x1F50D;'}</span>
+  </div>`;
+  return base + (isFull ? desc : '') + controls;
+}
+
+function attachToggleBehavior(popup, data, isFull) {
+  const html = createPopupContent(data, isFull);
+  popup.setContent(html);
+  setTimeout(() => {
+    const toggleBtn = document.querySelector('.popup-icon.toggle-popup');
+    if (toggleBtn) {
+      toggleBtn.onclick = () => attachToggleBehavior(popup, data, !isFull);
+    }
+  }, 50);
+}
+
+function createMarker(data) {
+  const lat = parseFloat(data["Γεωγραφικό Πλάτος"]);
+  const lng = parseFloat(data["Γεωγραφικό Μήκος"]);
+  if (isNaN(lat) || isNaN(lng)) return null;
+
+  const status = data["Κατάσταση"] || "";
+  const color = colors[status] || "blue";
+  const description = (data["Περιγραφή"] || "(δεν έχει καταχωρηθεί)").replace(/\n/g, "<br/>");
+
+  const info = {
+    category: data["Κατηγορία Προβλήματος"] || "Άγνωστη",
+    date: data["Ημερομηνία"] || "",
+    coord: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+    description
+  };
+
+  const marker = L.circleMarker([lat, lng], {
+    radius: 8,
+    fillColor: color,
+    color: "#000",
+    weight: 1,
+    opacity: 1,
+    fillOpacity: 0.9
+  });
+
+  marker.on('click', () => {
+    marker.bindPopup('').openPopup();
+    attachToggleBehavior(marker.getPopup(), info, false);
+  });
+
+  marker.status = status;
+  return marker;
+}
+
+function loadData() {
+  fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vSVTXBqqPNatxEFENwlxa9C0vm5BVvnETxO6Yet4u8CO1Ag3uYHOANHS16vjcfiarkQ6V-atrSHYXGh/pub?output=csv")
+    .then(res => res.text())
+    .then(csv => {
+      const rows = csv.split("\n").map(r => r.split(","));
+      const headers = rows[0];
+      for (let i = 1; i < rows.length; i++) {
+        const obj = {};
+        rows[i].forEach((val, j) => {
+          obj[headers[j].trim()] = val.trim();
+        });
+        const marker = createMarker(obj);
+        if (marker) {
+          marker.addTo(map);
+          allMarkers.push(marker);
+        }
+      }
+    });
+}
+
+function updateFilters() {
+  const checked = Array.from(document.querySelectorAll('.filters input:checked')).map(i => i.value);
+  allMarkers.forEach(marker => {
+    if (checked.includes(marker.status)) {
+      marker.addTo(map);
+    } else {
+      map.removeLayer(marker);
+    }
+  });
+}
+
+document.querySelectorAll('.filters input').forEach(input => {
+  input.addEventListener('change', updateFilters);
+});
+
+function checkPassword() {
+  const input = document.getElementById("password").value;
+  const error = document.getElementById("error");
+  if (input === "lixouri2025") {
+    document.getElementById("login-box").style.display = "none";
+    document.querySelector(".filters").style.display = "block";
+    document.getElementById("map").style.display = "block";
+    map.invalidateSize();
+    loadData();
+  } else {
+    error.textContent = "Λάθος κωδικός. Προσπαθήστε ξανά.";
+  }
+}
 </script>
 </body>
 </html>
