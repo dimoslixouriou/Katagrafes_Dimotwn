@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -53,6 +54,14 @@
       cursor: pointer;
       border-radius: 4px;
     }
+    .expand-icon {
+      display: inline-block;
+      float: right;
+      font-size: 1.2em;
+      cursor: pointer;
+      color: #0078D7;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -104,7 +113,7 @@ function createMarker(data) {
   const coord = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
   const description = data["Περιγραφή"] || "";
 
-  let shortContent = `<b>🛠️ ${category}</b><br/>🗓️ ${date}<br/>📍 ${coord}`;
+  let shortContent = `<b>🛠️ ${category}</b><br/>🗓️ ${date}<br/>📍 ${coord}<br/><span class='expand-icon'>&#x1F50D;</span>`;
   let fullContent = shortContent + (description ? `<br/><hr><b>📄 Περιγραφή:</b><br/>${description}` : "");
 
   const marker = L.circleMarker([lat, lng], {
