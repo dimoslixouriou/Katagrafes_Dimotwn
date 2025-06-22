@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Προβολή Καταγραφών (Προστατευμένο)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      z-index: 0;
+    }
+    .filters {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      font-size: 0.9em;
+      display: none;
+    }
+    .filters label { display: block; margin: 4px 0; }
+    #login-box {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #f4f4f4;
+      z-index: 2000;
+      position: relative;
+    }
+    #login-box input {
+      padding: 10px;
+      font-size: 1em;
+      margin: 5px;
+    }
+    #login-box button {
+      padding: 10px 20px;
+      font-size: 1em;
+      background: #0078D7;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="login-box">
+  <h2>🔒 Πρόσβαση μόνο σε εξουσιοδοτημένα άτομα</h2>
+  <p>Παρακαλώ εισάγετε τον κωδικό πρόσβασης:</p>
+  <input type="password" id="password" placeholder="Κωδικός..." />
+  <button onclick="checkPassword()">Είσοδος</button>
+  <p id="error" style="color:red;"></p>
+</div>
+
+<div class="filters">
+  <strong>Καταστάσεις:</strong><br/>
+  <label><input type="checkbox" value="Ενεργή" checked> Ενεργή</label>
+  <label><input type="checkbox" value="Σε εξέλιξη" checked> Σε εξέλιξη</label>
+  <label><input type="checkbox" value="Ολοκληρωμένη" checked> Ολοκληρωμένη</label>
+  <label><input type="checkbox" value="Άκυρη" checked> Άκυρη</label>
+  <label><input type="checkbox" value="" checked> (Κενή)</label>
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([38.1811, 20.4890], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const colors = {
+  "Ενεργή": "red",
+  "Σε εξέλιξη": "orange",
+  "Ολοκληρωμένη": "green",
+  "Άκυρη": "gray",
+  "": "white"
+};
+
+let allMarkers = [];
+
+function createMarker(data) {
+  const lat = parseFloat(data["Γεωγραφικό Πλάτος"]);
+  const lng = parseFloat(data["Γεωγραφικό Μήκος"]);
+  if (isNaN(lat) || isNaN(lng)) return null;
+
+  const status = data["Κατάσταση"] || "";
+  const color = colors[status] || "blue";
+  const category = data["Κατηγορία Προβλήματος"] || "Άγνωστη";
+  const date = data["Ημερομηνία"] || "";
+  const coord = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+  const popupContent = `
+    <b>🛠️ ${category}</b><br/>
+    🗓️ ${date}<br/>
+    📍 ${coord}
+  `;
+
+  const marker = L.circleMarker([lat, lng], {
+    radius: 8,
+    fillColor: color,
+    color: "#000",
+    weight: 1,
+    opacity: 1,
+    fillOpacity: 0.9
+  }).bindPopup(popupContent);
+
+  marker.status = status;
+  return marker;
+}
+
+function loadData() {
+  fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vSVTXBqqPNatxEFENwlxa9C0vm5BVvnETxO6Yet4u8CO1Ag3uYHOANHS16vjcfiarkQ6V-atrSHYXGh/pub?output=csv")
+    .then(res => res.text())
+    .then(csv => {
+      const rows = csv.split("\n").map(r => r.split(","));
+      const headers = rows[0];
+      for (let i = 1; i < rows.length; i++) {
+        const obj = {};
+        rows[i].forEach((val, j) => {
+          obj[headers[j].trim()] = val.trim();
+        });
+        const marker = createMarker(obj);
+        if (marker) {
+          marker.addTo(map);
+          allMarkers.push(marker);
+        }
+      }
+    });
+}
+
+function updateFilters() {
+  const checked = Array.from(document.querySelectorAll('.filters input:checked')).map(i => i.value);
+  allMarkers.forEach(marker => {
+    if (checked.includes(marker.status)) {
+      marker.addTo(map);
+    } else {
+      map.removeLayer(marker);
+    }
+  });
+}
+
+document.querySelectorAll('.filters input').forEach(input => {
+  input.addEventListener('change', updateFilters);
+});
+
+function checkPassword() {
+  const input = document.getElementById("password").value;
+  const error = document.getElementById("error");
+  if (input === "lixouri2025") {
+    document.getElementById("login-box").style.display = "none";
+    document.querySelector(".filters").style.display = "block";
+    document.getElementById("map").style.display = "block";
+    map.invalidateSize();
+    loadData();
+  } else {
+    error.textContent = "Λάθος κωδικός. Προσπαθήστε ξανά.";
+  }
+}
+</script>
+</body>
+</html>
