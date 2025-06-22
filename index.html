@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -61,7 +62,10 @@
       font-size: 1.2em;
       cursor: pointer;
       color: #0078D7;
-      margin-left: 10px;
+    }
+    .description {
+      display: none;
+      margin-top: 6px;
     }
   </style>
 </head>
@@ -102,24 +106,20 @@ const colors = {
 
 let allMarkers = [];
 
-function createPopupContent(data, isFull) {
-  const base = `<b>🛠️ ${data.category}</b><br/>🗓️ ${data.date}<br/>📍 ${data.coord}`;
-  const desc = `<hr><b>📄 Περιγραφή:</b><br/>${data.description}`;
-  const controls = `<div class="popup-controls">
-    <span class="popup-icon toggle-popup">${isFull ? '&#x2796;' : '&#x1F50D;'}</span>
-  </div>`;
-  return base + (isFull ? desc : '') + controls;
-}
-
-function attachToggleBehavior(popup, data, isFull) {
-  const html = createPopupContent(data, isFull);
-  popup.setContent(html);
-  setTimeout(() => {
-    const toggleBtn = document.querySelector('.popup-icon.toggle-popup');
-    if (toggleBtn) {
-      toggleBtn.onclick = () => attachToggleBehavior(popup, data, !isFull);
-    }
-  }, 50);
+function createPopupHTML(data) {
+  return `
+    <div>
+      <b>🛠️ ${data.category}</b><br/>
+      🗓️ ${data.date}<br/>
+      📍 ${data.coord}
+      <div class="description"><hr><b>📄 Περιγραφή:</b><br/>${data.description}</div>
+      <div class="popup-controls">
+        <span class="popup-icon" onclick="this.closest('div').querySelector('.description').style.display =
+          this.closest('div').querySelector('.description').style.display === 'none' ? 'block' : 'none';
+          this.innerHTML = this.innerHTML === '➖' ? '&#x1F50D;' : '&#x2796;';">
+        🔍</span>
+      </div>
+    </div>`;
 }
 
 function createMarker(data) {
@@ -129,15 +129,6 @@ function createMarker(data) {
 
   const status = data["Κατάσταση"] || "";
   const color = colors[status] || "blue";
-  const description = (data["Περιγραφή"] || "(δεν έχει καταχωρηθεί)").replace(/\n/g, "<br/>");
-
-  const info = {
-    category: data["Κατηγορία Προβλήματος"] || "Άγνωστη",
-    date: data["Ημερομηνία"] || "",
-    coord: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-    description
-  };
-
   const marker = L.circleMarker([lat, lng], {
     radius: 8,
     fillColor: color,
@@ -147,11 +138,14 @@ function createMarker(data) {
     fillOpacity: 0.9
   });
 
-  marker.on('click', () => {
-    marker.bindPopup('').openPopup();
-    attachToggleBehavior(marker.getPopup(), info, false);
-  });
+  const popupData = {
+    category: data["Κατηγορία Προβλήματος"] || "Άγνωστη",
+    date: data["Ημερομηνία"] || "",
+    coord: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+    description: (data["Περιγραφή"] || "(δεν έχει καταχωρηθεί)").replace(/\n/g, "<br/>")
+  };
 
+  marker.bindPopup(createPopupHTML(popupData));
   marker.status = status;
   return marker;
 }
