@@ -2,13 +2,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Προβολή Καταγραφών</title>
+  <title>Προβολή Καταγραφών (Προστατευμένο)</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
     body { margin: 0; font-family: sans-serif; }
-    #map { width: 100%; height: 100vh; }
+    #map {
+      width: 100%;
+      height: 100vh;
+      display: none;
+    }
     .filters {
       position: absolute;
       top: 10px;
@@ -19,6 +23,7 @@
       border-radius: 6px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       font-size: 0.9em;
+      display: none;
     }
     .filters label { display: block; margin: 4px 0; }
     .popup-controls {
@@ -34,9 +39,42 @@
       display: none;
       margin-top: 6px;
     }
+    #login-box {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #f4f4f4;
+      z-index: 2000;
+      position: relative;
+    }
+    #login-box input {
+      padding: 10px;
+      font-size: 1em;
+      margin: 5px;
+    }
+    #login-box button {
+      padding: 10px 20px;
+      font-size: 1em;
+      background: #0078D7;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
+
+<div id="login-box">
+  <h2>🔒 Πρόσβαση μόνο σε εξουσιοδοτημένα άτομα</h2>
+  <p>Παρακαλώ εισάγετε τον κωδικό πρόσβασης:</p>
+  <input type="password" id="password" placeholder="Κωδικός..." />
+  <button onclick="checkPassword()">Είσοδος</button>
+  <p id="error" style="color:red;"></p>
+</div>
+
 <div class="filters">
   <strong>Καταστάσεις:</strong><br/>
   <label><input type="checkbox" value="Ενεργή" checked> Ενεργή</label>
@@ -45,6 +83,7 @@
   <label><input type="checkbox" value="Άκυρη" checked> Άκυρη</label>
   <label><input type="checkbox" value="" checked> (Κενή)</label>
 </div>
+
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 <script>
@@ -143,7 +182,19 @@ document.querySelectorAll('.filters input').forEach(input => {
   input.addEventListener('change', updateFilters);
 });
 
-loadData();
+function checkPassword() {
+  const input = document.getElementById("password").value;
+  const error = document.getElementById("error");
+  if (input === "lixouri2025") {
+    document.getElementById("login-box").style.display = "none";
+    document.querySelector(".filters").style.display = "block";
+    document.getElementById("map").style.display = "block";
+    map.invalidateSize();
+    loadData();
+  } else {
+    error.textContent = "Λάθος κωδικός. Προσπαθήστε ξανά.";
+  }
+}
 </script>
 </body>
 </html>
