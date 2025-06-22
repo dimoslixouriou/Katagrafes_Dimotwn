@@ -9,6 +9,18 @@
   <style>
     body { margin: 0; font-family: sans-serif; }
     #map { width: 100%; height: 100vh; }
+    .filters {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      font-size: 0.9em;
+    }
+    .filters label { display: block; margin: 4px 0; }
     .popup-controls {
       text-align: right;
       margin-top: 8px;
@@ -25,6 +37,14 @@
   </style>
 </head>
 <body>
+<div class="filters">
+  <strong>Καταστάσεις:</strong><br/>
+  <label><input type="checkbox" value="Ενεργή" checked> Ενεργή</label>
+  <label><input type="checkbox" value="Σε εξέλιξη" checked> Σε εξέλιξη</label>
+  <label><input type="checkbox" value="Ολοκληρωμένη" checked> Ολοκληρωμένη</label>
+  <label><input type="checkbox" value="Άκυρη" checked> Άκυρη</label>
+  <label><input type="checkbox" value="" checked> (Κενή)</label>
+</div>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 <script>
@@ -33,15 +53,15 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-const sampleData = [
-  {
-    "Κατηγορία Προβλήματος": "Λακκούβα",
-    "Ημερομηνία": "2025-06-20",
-    "Γεωγραφικό Πλάτος": "38.2048",
-    "Γεωγραφικό Μήκος": "20.4359",
-    "Περιγραφή": "Μεγάλη λακκούβα δίπλα από το σχολείο."
-  }
-];
+const colors = {
+  "Ενεργή": "red",
+  "Σε εξέλιξη": "orange",
+  "Ολοκληρωμένη": "green",
+  "Άκυρη": "gray",
+  "": "white"
+};
+
+let allMarkers = [];
 
 function createPopupHTML(data) {
   const escaped = (data["Περιγραφή"] || "").replace(/\n/g, "<br/>");
@@ -66,20 +86,64 @@ function toggleDescription(icon) {
   icon.innerHTML = isVisible ? '🔍' : '➖';
 }
 
-sampleData.forEach(data => {
+function createMarker(data) {
   const lat = parseFloat(data["Γεωγραφικό Πλάτος"]);
   const lng = parseFloat(data["Γεωγραφικό Μήκος"]);
+  if (isNaN(lat) || isNaN(lng)) return null;
+
+  const status = data["Κατάσταση"] || "";
+  const color = colors[status] || "blue";
+
   const marker = L.circleMarker([lat, lng], {
     radius: 8,
-    fillColor: 'red',
+    fillColor: color,
     color: "#000",
     weight: 1,
     opacity: 1,
     fillOpacity: 0.9
   });
-  marker.addTo(map);
+
   marker.bindPopup(createPopupHTML(data));
+  marker.status = status;
+  return marker;
+}
+
+function loadData() {
+  fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vSVTXBqqPNatxEFENwlxa9C0vm5BVvnETxO6Yet4u8CO1Ag3uYHOANHS16vjcfiarkQ6V-atrSHYXGh/pub?output=csv")
+    .then(res => res.text())
+    .then(csv => {
+      const rows = csv.split("\n").map(r => r.split(","));
+      const headers = rows[0];
+      for (let i = 1; i < rows.length; i++) {
+        const obj = {};
+        rows[i].forEach((val, j) => {
+          obj[headers[j].trim()] = val.trim();
+        });
+        const marker = createMarker(obj);
+        if (marker) {
+          marker.addTo(map);
+          allMarkers.push(marker);
+        }
+      }
+    });
+}
+
+function updateFilters() {
+  const checked = Array.from(document.querySelectorAll('.filters input:checked')).map(i => i.value);
+  allMarkers.forEach(marker => {
+    if (checked.includes(marker.status)) {
+      marker.addTo(map);
+    } else {
+      map.removeLayer(marker);
+    }
+  });
+}
+
+document.querySelectorAll('.filters input').forEach(input => {
+  input.addEventListener('change', updateFilters);
 });
+
+loadData();
 </script>
 </body>
 </html>
